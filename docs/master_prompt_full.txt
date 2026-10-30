@@ -1,0 +1,1158 @@
+<USER_REQUEST>
+# MASTER PROJECT DEVELOPMENT PROMPT
+## AIORI HACKATHON 3 – PS-003
+
+### PROJECT TITLE
+**Secure, Budgeted, Event-Aware Federated Traffic Learning**
+
+### 1. YOUR ROLE AND DEVELOPMENT EXPECTATIONS
+
+Act as a senior Machine Learning Engineer, Federated Learning Researcher, Software Architect, and Technical Project Mentor.
+
+You are responsible for helping us develop a complete, research-oriented, testable prototype for AIORI Hackathon 3.
+
+Do not approach this as a simple coding task.
+
+You must:
+- Plan the entire project before implementation.
+- Divide the work into clear development phases.
+- Establish baseline requirements before introducing advanced features.
+- Explain the purpose of every major component.
+- Implement each component separately and test it.
+- Maintain a working project at every stage.
+- Prioritize mathematical correctness and experimental validity.
+- Maintain reproducibility and proper documentation.
+- Never fabricate experimental results.
+- Never claim that an unimplemented feature is complete.
+
+We have limited development time. Prioritize the most important technical contributions rather than unnecessary UI development or decorative features.
+
+Use Python and PyTorch unless there is a compelling technical reason to choose otherwise.
+
+Our workspace is already created:
+
+AIORI/
+
+The downloaded PEMS04 dataset is located inside this folder.
+
+First inspect the existing folder structure and files. Do not overwrite or delete existing data.
+
+---
+
+# 2. OFFICIAL AIORI PROBLEM STATEMENT
+
+Problem Statement PS-003:
+
+**Federated Traffic-Flow Prediction with Communication-Cost Evaluation**
+
+The project must demonstrate how traffic-flow prediction can be performed using federated learning while evaluating communication overhead.
+
+The implementation must include:
+
+1. One public traffic dataset.
+2. Dataset distribution across 3–5 simulated intersections or clients.
+3. A compact traffic-prediction model.
+4. Federated learning using FedAvg.
+5. A centralized training baseline.
+6. IID and non-IID data distribution experiments.
+7. Chronological train, validation and test splitting.
+8. MAE and RMSE prediction metrics.
+9. Communication bytes per round.
+10. Convergence evaluation.
+11. Three random seeds.
+12. A prototype implementation or pseudocode and supporting documentation.
+
+The project is a software prototype.
+
+Do not introduce unnecessary dependencies on:
+- Live CCTV cameras.
+- Physical IoT hardware.
+- Real-world city deployment.
+- Traffic-light controllers.
+- Actual police or government traffic systems.
+- Formal differential privacy guarantees.
+
+Do not claim that our simulation represents an actual deployed traffic-management system.
+
+All experiments must be reproducible and honestly reported.
+
+---
+
+# 3. OUR COMPLETE PROJECT IDEA
+
+Traffic conditions differ across locations.
+
+For example:
+- Central urban roads may experience consistently high traffic.
+- Residential areas may experience lower average traffic.
+- Highways may experience different traffic patterns.
+- Accidents, diversions, festivals and unusual traffic surges can cause sudden changes.
+
+A centralized traffic-prediction system requires data from multiple locations to be transmitted to a central server.
+
+Federated learning provides an alternative.
+
+Each simulated client trains locally using its own traffic observations. Only model updates are transmitted to the central server.
+
+The central server aggregates these updates and distributes the improved global model.
+
+However, conventional federated learning can still produce considerable communication overhead because clients repeatedly upload model updates and download global models.
+
+Our proposed system aims to improve this process.
+
+### Our central contribution
+
+Develop an intelligent, communication-budget-aware federated aggregation framework that:
+
+1. Predicts traffic flow using a spatial-temporal model.
+2. Allows local training at multiple simulated clients.
+3. Aggregates model updates using a correct FedAvg foundation.
+4. Identifies clients that need to communicate based on meaningful traffic changes.
+5. Avoids unnecessary communication when local traffic conditions remain stable.
+6. Operates within a configurable communication budget.
+7. Uses lightweight update validation and optional update compression.
+8. Measures the accuracy-versus-communication trade-off.
+
+The objective is not merely to reduce the number of communication rounds.
+
+The objective is to achieve a better balance between:
+
+- Prediction accuracy.
+- Total communication bytes.
+- Convergence speed.
+- Computational requirements.
+- Robustness of model updates.
+
+A solution that reduces communication but significantly damages prediction accuracy must not be considered successful.
+
+---
+
+# 4. DATASET PREPARATION – FIRST PRIORITY
+
+Our primary dataset is PEMS04.
+
+The downloaded file is located inside the AIORI project folder.
+
+Expected filename: pems04.npz.
+
+The archive has already been inspected and contains:
+
+Array key: data
+
+Shape: (16992, 307, 3)
+
+Data type: float64
+
+Features:
+- Traffic flow.
+- Occupancy.
+- Speed.
+
+Expected interpretation:
+
+data[time_step, sensor, feature]
+
+Feature indexing:
+- data[:, :, 0] = traffic flow.
+- data[:, :, 1] = occupancy.
+- data[:, :, 2] = speed.
+
+The archive contains 16,992 time steps and 307 sensors.
+
+### Dataset extraction and loading
+
+Do not attempt to extract the NPZ file like a conventional CSV or text file.
+
+Use NumPy:
+
+import numpy as np
+
+archive = np.load("pems04.npz")
+
+print(archive.files)
+
+data = archive["data"]
+
+print(data.shape)
+print(data.dtype)
+
+The archive is already a NumPy compressed array format.
+
+Do not convert it to CSV unnecessarily.
+
+### Dataset validation tasks
+
+Before model development:
+
+1. Inspect the actual workspace and locate the NPZ file.
+2. Confirm the archive can be loaded.
+3. Confirm the array key.
+4. Verify dimensions.
+5. Verify feature ordering using the dataset documentation.
+6. Inspect minimum, maximum, mean and standard deviation of every feature.
+7. Check NaN and infinite values.
+8. Investigate zero values and unusual readings.
+9. Identify missing values or anomalous observations.
+10. Create a reproducible dataset-loading module.
+
+Do not silently replace missing values or discard unusual readings without documenting the decision.
+
+### Adjacency matrix
+
+STGCN requires a graph representing spatial relationships between sensors.
+
+The supplied NPZ archive contains the traffic data array but does not contain the adjacency matrix.
+
+Therefore:
+
+1. Find the corresponding PEMS04 sensor adjacency or distance information from a credible dataset or research repository.
+2. Verify that it belongs to the same PEMS04 dataset version.
+3. Verify that it corresponds to the same 307 sensors and sensor ordering.
+4. Verify matrix dimensions.
+5. Inspect connectivity and diagonal values.
+6. Apply a documented adjacency-normalization method.
+7. Save the verified graph data separately.
+
+Never invent an adjacency matrix or generate arbitrary sensor connections just to make the model run.
+
+If the correct graph cannot be obtained, stop the STGCN implementation and report the issue instead of pretending that a valid spatial model has been implemented.
+
+### Simulated clients
+
+Create five virtual clients initially.
+
+Distribute the 307 sensors into five groups.
+
+These groups represent experimental virtual clients, not confirmed real-world geographical intersections.
+
+Where sensor location or adjacency metadata permits, group spatially connected sensors.
+
+Otherwise, use a reproducible partition and explicitly document its limitations.
+
+Each client should have:
+- Its own local traffic observations.
+- Its own local training process.
+- Its own local model update.
+- Its own communication statistics.
+
+Maintain compatible model parameter dimensions across all clients.
+
+### Data splitting
+
+Use chronological splitting.
+
+Initial recommended proportions:
+
+- 70% training.
+- 10% validation.
+- 20% testing.
+
+Do not randomly mix future observations into training data.
+
+Fit normalization parameters using training data only.
+
+Prevent data leakage during preprocessing, training, model selection and threshold tuning.
+
+Begin with a 15-minute forecasting horizon, equivalent to three five-minute time steps.
+
+Make input window and forecast horizon configurable.
+
+---
+
+# 5. MODEL DEVELOPMENT – STGCN
+
+Use a compact Spatio-Temporal Graph Convolutional Network (STGCN) as our primary model.
+
+Reason:
+
+Traffic flow depends on:
+- Previous traffic conditions.
+- Temporal changes.
+- Relationships between connected traffic sensors.
+
+STGCN is suitable because it models both spatial and temporal dependencies.
+
+However, the model must remain compact enough for federated training and communication evaluation.
+
+### Baseline model requirements
+
+Implement:
+1. Spatial graph convolution.
+2. Temporal convolution.
+3. Appropriate activation and normalization.
+4. Forecasting output layer.
+5. Configurable input window.
+6. Configurable forecast horizon.
+7. Traffic-flow prediction.
+
+Start with a compact STGCN configuration.
+
+Do not introduce unnecessary attention layers or complicated architectures before the basic model is validated.
+
+### Required tests
+
+- Correct input dimensions.
+- Correct output dimensions.
+- Successful forward pass.
+- Finite output values.
+- Successful backward pass.
+- Successful optimizer update.
+- Correct graph convolution.
+- Correct adjacency handling.
+- Reproducible initialization.
+
+Test the model using actual PEMS04 batches.
+
+### Centralized baseline
+
+Before federated learning, train the same STGCN model centrally.
+
+Record:
+- Training loss.
+- Validation loss.
+- Test MAE.
+- Test RMSE.
+- Training time.
+- Model parameter count.
+
+This is essential because all federated experiments must be compared against a meaningful centralized baseline.
+
+---
+
+# 6. FEDERATED LEARNING – STANDARD BASELINE
+
+Implement conventional Federated Averaging (FedAvg) before developing our proposed improvements.
+
+### Working architecture
+
+Five virtual clients:
+
+Client 1
+Client 2
+Client 3
+Client 4
+Client 5
+
+Central aggregation server.
+
+Each round must follow this sequence:
+
+1. Server distributes the current global model to participating clients.
+2. Each client initializes or updates its local model using the received global parameters.
+3. Each client trains locally using its own training data.
+4. Each client sends its updated model parameters to the server.
+5. Server validates update compatibility.
+6. Server aggregates client parameters.
+7. Server creates the new global model.
+8. Server distributes the new global model in the next communication round.
+
+### FedAvg mathematical requirement
+
+Use sample-count-weighted aggregation:
+
+W_global = Σ (n_i / Σ n_j) × W_i
+
+Where:
+- W_i = model parameters from client i.
+- n_i = number of local training samples at client i.
+- W_global = aggregated global parameters.
+
+Implement the aggregation carefully.
+
+Do not simply average model parameters without considering local sample counts.
+
+Ensure that:
+- All participating models have compatible parameter names and shapes.
+- Aggregation uses the correct data types.
+- No NaN or infinite values enter the global model.
+- The aggregated parameters are correctly loaded into the global model.
+
+### Essential FedAvg tests
+
+Create unit tests for:
+- Two-client aggregation.
+- Five-client aggregation.
+- Unequal sample counts.
+- Identical client updates.
+- Known numerical examples.
+- Invalid tensor dimensions.
+- Non-finite values.
+- Correct global-model redistribution.
+
+Test the aggregation mathematically using small known tensors before running expensive training.
+
+### Federated baseline experiments
+
+Evaluate:
+1. IID client distribution.
+2. Non-IID client distribution.
+
+Use the same STGCN architecture and forecasting configuration as the centralized baseline.
+
+Record:
+- MAE.
+- RMSE.
+- Communication bytes.
+- Number of communication rounds.
+- Convergence behaviour.
+- Training time.
+
+This standard FedAvg implementation is our reference for evaluating every proposed improvement.
+
+---
+
+# 7. MOST IMPORTANT COMPONENT – PROPOSED AGGREGATION AND COMMUNICATION OPTIMIZATION
+
+This is the central research contribution of our project.
+
+Do not treat aggregation as a small final function.
+
+Give this component the highest technical priority after the dataset and baseline model are validated.
+
+Our goal is to improve communication efficiency without sacrificing useful learning information.
+
+Develop a proposed V2 framework on top of standard FedAvg.
+
+Call the proposed approach:
+
+**Budget-Aware Event-Triggered Federated Aggregation (BEFA).**
+
+This is our proposed framework name. Do not claim it is an established published algorithm.
+
+### A. Event-aware client participation
+
+Conventional federated learning can communicate at every scheduled round, even when local traffic conditions have changed very little.
+
+Develop an event-aware participation mechanism.
+
+Each client should monitor a configurable local traffic-change score.
+
+The score may consider:
+- Difference between recent and previous traffic observations.
+- Relative traffic-flow change.
+- Local prediction error or validation deterioration.
+- Significant deviations from the client's recent traffic pattern.
+
+A client should request participation when its local conditions indicate that a new update may be useful.
+
+Avoid triggering communication for insignificant fluctuations.
+
+However, do not allow a client to remain excluded indefinitely.
+
+Introduce a maximum communication interval.
+
+Also introduce a fallback mechanism for important clients or significant prediction deterioration.
+
+Document the exact event score, thresholds and selection logic.
+
+Tune thresholds using training or validation data only, never the test set.
+
+### B. Hard communication budget
+
+Implement a configurable communication budget.
+
+Track actual serialized communication rather than estimating bytes from model parameter counts alone.
+
+Measure:
+
+1. Global-model download bytes.
+2. Local-update upload bytes.
+3. Total bytes per round.
+4. Cumulative communication bytes.
+5. Remaining budget.
+6. Deferred updates.
+7. Number of participating clients.
+
+Use actual serialized payload sizes or an equivalent reproducible transport simulation.
+
+Clearly define whether protocol overhead is included.
+
+Before sending an update, check whether the remaining budget can accommodate the exchange.
+
+If it cannot:
+- Do not silently exceed the budget.
+- Defer or reject the exchange according to the scheduling policy.
+- Log the decision.
+- Preserve the latest accepted global model.
+- Allow future participation when the budget policy permits.
+
+Budget enforcement must be tested with known payload sizes.
+
+### C. Intelligent aggregation
+
+Standard sample-weighted FedAvg must remain our baseline.
+
+For the proposed version, investigate whether the aggregation process can improve update usefulness without introducing arbitrary weights.
+
+Possible factors to investigate:
+
+- Local sample count.
+- Update freshness.
+- Update validity.
+- Local validation performance.
+- Client traffic-change significance.
+
+Do not combine these into an arbitrary formula.
+
+Develop a mathematically justified weighting or selection strategy.
+
+First implement the simplest valid approach.
+
+Then evaluate whether a validation-informed or event-informed aggregation weight adds measurable value over standard FedAvg.
+
+Avoid allowing a single client's local validation score to dominate global learning.
+
+Compare proposed aggregation against standard FedAvg under IID and non-IID conditions.
+
+Document the formula and its assumptions.
+
+### D. Update compression – optional advancement
+
+Investigate lightweight quantization of model updates to reduce upload bytes.
+
+A possible implementation is 8-bit quantization.
+
+If used:
+- Measure actual serialized payload size.
+- Dequantize correctly at the server.
+- Compare prediction accuracy before and after compression.
+- Test numerical stability.
+- Consider error-feedback compensation if quantization errors accumulate.
+- Include compression overhead in byte accounting.
+
+Do not enable compression automatically until the uncompressed baseline works.
+
+Treat compression as an experimental enhancement, not a mandatory dependency.
+
+### E. Lightweight update security and robustness
+
+Implement basic checks:
+- Correct parameter names and shapes.
+- Finite tensor values.
+- Stale update detection.
+- Duplicate update detection.
+- Configurable update norm clipping.
+- Rejection logging.
+
+Do not claim complete Byzantine fault tolerance, differential privacy or formal security.
+
+These are lightweight safeguards for the prototype.
+
+### F. Resource optimization
+
+Release temporary client training resources after aggregation when they are no longer required.
+
+Consider:
+- Temporary local models.
+- Gradients.
+- Unnecessary optimizer resources.
+- Temporary serialized payloads.
+
+Preserve the global model and any client state required by the experiment.
+
+If optimizer state is reset between rounds, document and evaluate the effect on convergence.
+
+Do not confuse RAM reduction with communication reduction.
+
+### G. Final proposed aggregation workflow
+
+The proposed system should operate as follows:
+
+1. Server maintains the current global STGCN model.
+2. Clients receive the current global model when scheduled.
+3. Clients monitor local traffic conditions.
+4. Event-aware logic determines whether an update is useful.
+5. The budget manager checks available communication capacity.
+6. Selected clients perform local training.
+7. Updates are optionally compressed.
+8. Server validates freshness, shapes and numerical values.
+9. Invalid or duplicate updates are rejected.
+10. Accepted updates are aggregated using the proposed aggregation strategy.
+11. The new global model is produced.
+12. Communication statistics are recorded.
+13. Temporary resources are released.
+14. The process continues until the training or budget stopping condition is reached.
+
+The aggregation must remain mathematically correct and reproducible.
+
+### H. Critical success condition
+
+Our V2 is successful only if experiments demonstrate a meaningful improvement in communication efficiency while maintaining or improving predictive performance relative to standard FedAvg.
+
+If accuracy decreases, report the trade-off honestly.
+
+Do not claim that a method improves both metrics unless the experimental results support it.
+
+---
+
+# 8. EXPERIMENTAL DESIGN
+
+Use a controlled experimental framework.
+
+Compare the following:
+
+Experiment A: Persistence baseline.
+
+Experiment B: Centralized STGCN.
+
+Experiment C: Standard FedAvg STGCN.
+
+Experiment D: Proposed BEFA STGCN.
+
+Use the same forecasting task, data preprocessing, model architecture and evaluation protocol wherever applicable.
+
+### Required experiments
+
+1. IID data distribution.
+2. Non-IID data distribution.
+3. Different communication budgets.
+4. Event-triggered communication enabled versus disabled.
+5. Compression enabled versus disabled, if implemented.
+6. Standard FedAvg versus proposed aggregation.
+7. Different client participation levels where practical.
+
+Run three random seeds.
+
+Use reproducible seed configuration for Python, NumPy and PyTorch.
+
+### Required evaluation metrics
+
+Prediction:
+- MAE.
+- RMSE.
+
+Communication:
+- Upload bytes.
+- Download bytes.
+- Total communication bytes.
+- Bytes per round.
+- Cumulative bytes.
+- Number of communication rounds.
+- Number of participating clients.
+- Deferred updates.
+
+Efficiency:
+- Training time.
+- Convergence behaviour.
+- Peak memory where measurable.
+
+Do not compare only the number of rounds.
+
+A system can use fewer rounds while transmitting larger payloads.
+
+Total communication bytes must be measured.
+
+### Result analysis
+
+Create:
+- Accuracy comparison tables.
+- Communication-cost comparison tables.
+- MAE versus communication budget graphs.
+- RMSE versus communication budget graphs.
+- Convergence graphs.
+- Communication bytes per round graphs.
+- Ablation study results.
+
+Explain what each experiment proves and what it does not prove.
+
+Do not generate fabricated graphs or placeholder values that appear to be experimental results.
+
+---
+
+# 9. NOVELTY AND RESEARCH CONTRIBUTION
+
+Our novelty should be a logical combination of communication optimization and traffic-aware learning.
+
+The central proposed contribution is:
+
+**A communication-budget-aware, event-triggered federated learning framework that prioritizes useful client updates and evaluates the resulting accuracy-versus-communication trade-off.**
+
+Potential supporting contributions:
+
+1. Local traffic-change-based client participation.
+2. Hard communication-budget enforcement.
+3. Sample-aware, validated aggregation.
+4. Optional quantized update transmission.
+5. Lightweight stale and duplicate update rejection.
+6. Accuracy-versus-byte-budget evaluation.
+7. Analysis of performance under non-IID traffic distributions.
+
+Do not claim that every individual component is new.
+
+The research contribution should be the well-defined integration, evaluation and evidence of improvement.
+
+Do not add features simply to make the project sound advanced.
+
+Prioritize a smaller number of correctly implemented, measurable improvements.
+
+---
+
+# 10. SOFTWARE ARCHITECTURE AND FILE ALLOCATION
+
+Organize the project into separate modules.
+
+Suggested structure:
+
+AIORI/
+│
+├── pems04.npz
+├── data/
+│   ├── adjacency/
+│   ├── processed/
+│   └── dataset_loader.py
+│
+├── models/
+│   ├── stgcn.py
+│   └── graph_layers.py
+│
+├── clients/
+│   ├── client.py
+│   └── partitioner.py
+│
+├── server/
+│   ├── fedavg.py
+│   ├── proposed_aggregation.py
+│   └── coordinator.py
+│
+├── communication/
+│   ├── budget_manager.py
+│   ├── event_scheduler.py
+│   ├── serialization.py
+│   └── compression.py
+│
+├── security/
+│   └── update_validator.py
+│
+├── training/
+│   ├── centralized.py
+│   └── federated.py
+│
+├── evaluation/
+│   ├── metrics.py
+│   ├── experiments.py
+│   └── reporting.py
+│
+├── tests/
+│   ├── test_dataset.py
+│   ├── test_model.py
+│   ├── test_fedavg.py
+│   ├── test_budget.py
+│   └── test_validation.py
+│
+├── results/
+│   ├── metrics/
+│   ├── plots/
+│   └── logs/
+│
+├── docs/
+│   ├── architecture.md
+│   ├── methodology.md
+│   ├── experiments.md
+│   └── limitations.md
+│
+├── requirements.txt
+├── README.md
+└── main.py
+
+Adjust the structure when technically necessary, but maintain separation of responsibilities.
+
+Do not place the entire application in one large Python file.
+
+---
+
+# 11. DEVELOPMENT PHASES AND EXECUTION PRIORITIES
+
+Follow this order strictly.
+
+## PHASE 0 – WORKSPACE AND PROJECT PLANNING
+
+Before writing implementation code:
+
+- Inspect AIORI/.
+- Identify the dataset file.
+- Check available Python environment.
+- Check GPU availability.
+- Identify installed dependencies.
+- Prepare the project structure.
+- Create a development roadmap.
+- Create a requirements and risk checklist.
+
+Deliver:
+- Project structure.
+- Architecture document.
+- Development plan.
+- Dependency list.
+- Test plan.
+
+Do not begin the dashboard.
+
+## PHASE 1 – DATASET VALIDATION
+
+Highest initial priority.
+
+- Load PEMS04.
+- Verify array dimensions and feature order.
+- Inspect data statistics.
+- Validate the sensor adjacency matrix.
+- Create chronological splits.
+- Create IID and non-IID partitioning.
+- Verify all clients receive valid data.
+
+Deliver:
+- Working dataset loader.
+- Dataset inspection report.
+- Validated adjacency matrix.
+- Client partition report.
+- Dataset unit tests.
+
+Do not continue if the dataset or adjacency matrix is incorrect.
+
+## PHASE 2 – STGCN MODEL
+
+- Implement compact STGCN.
+- Test graph convolution.
+- Test temporal convolution.
+- Verify input and output dimensions.
+- Run forward and backward passes.
+- Train a small sample.
+
+Deliver:
+- Working model.
+- Model tests.
+- Parameter count.
+- Model documentation.
+
+## PHASE 3 – CENTRALIZED BASELINE
+
+- Train STGCN centrally.
+- Validate model performance.
+- Evaluate test MAE and RMSE.
+- Save the model checkpoint.
+- Record runtime.
+
+Deliver:
+- Centralized baseline metrics.
+- Training logs.
+- Reproducible evaluation script.
+
+## PHASE 4 – STANDARD FEDERATED BASELINE
+
+- Implement virtual clients.
+- Implement local training.
+- Implement server communication.
+- Implement sample-weighted FedAvg.
+- Test aggregation mathematically.
+- Run IID and non-IID experiments.
+
+Deliver:
+- Working federated prototype.
+- FedAvg unit tests.
+- Global-model checkpoints.
+- Baseline communication statistics.
+- Comparison with centralized training.
+
+## PHASE 5 – PROPOSED BEFA AGGREGATION
+
+This is our most important development phase.
+
+Implement in this order:
+
+1. Communication byte measurement.
+2. Hard budget enforcement.
+3. Event-aware client participation.
+4. Maximum update interval and fallback logic.
+5. Update validation.
+6. Proposed aggregation strategy.
+7. Optional update compression.
+8. Resource cleanup.
+
+Test each feature independently.
+
+Then integrate them into one working federated workflow.
+
+Deliver:
+- Proposed aggregation module.
+- Event scheduler.
+- Communication budget manager.
+- Update validation module.
+- Integrated V2 training process.
+- Unit and integration tests.
+
+Do not move to final experiments until all core features pass their tests.
+
+## PHASE 6 – EXPERIMENTS AND EVALUATION
+
+Run:
+- Persistence baseline.
+- Centralized STGCN.
+- Standard FedAvg.
+- Proposed BEFA.
+- IID and non-IID tests.
+- Three random seeds.
+- Ablation experiments.
+
+Deliver:
+- Raw results.
+- CSV metrics.
+- Plots.
+- Comparison tables.
+- Experimental analysis.
+- Limitations.
+
+## PHASE 7 – DOCUMENTATION AND AIORI SUBMISSION
+
+Prepare:
+- Final README.
+- System architecture.
+- Methodology.
+- Mathematical explanation.
+- Experimental results.
+- Comparison with baseline.
+- Novelty explanation.
+- Limitations.
+- Future scope.
+- Demonstration instructions.
+- Final presentation material.
+
+Do not create a presentation claiming features or results that have not been implemented and tested.
+
+---
+
+# 12. TEAM RESPONSIBILITY ALLOCATION
+
+We are a two-member engineering student team.
+
+### MEMBER 1 – MODEL TRAINING, TESTING AND EVALUATION
+
+Responsible for:
+
+- PEMS04 dataset understanding.
+- Data preprocessing.
+- STGCN implementation and model configuration.
+- Centralized baseline.
+- Local client model training.
+- IID and non-IID experiments.
+- MAE and RMSE evaluation.
+- Convergence analysis.
+- Experimental reproducibility.
+- Final result interpretation.
+
+### MEMBER 2 – COMMUNICATION OPTIMIZATION AND SECURITY
+
+Responsible for:
+
+- Federated communication workflow.
+- Communication-byte accounting.
+- Communication-budget enforcement.
+- Event-aware client scheduling.
+- Update serialization and optional compression.
+- Model-update efficiency.
+- Stale and duplicate update checks.
+- Update validation.
+- Lightweight security safeguards.
+- Resource optimization.
+
+### SHARED RESPONSIBILITIES
+
+Both members must understand:
+
+- Overall architecture.
+- FedAvg mathematics.
+- Proposed aggregation mathematics.
+- Dataset limitations.
+- Communication-cost calculation.
+- Experimental results.
+- Novelty and limitations.
+- AIORI demonstration.
+
+Keep modules separate enough for parallel work, but define interfaces before implementation.
+
+Do not allow two people or two AI agents to modify the same core module simultaneously without coordination.
+
+---
+
+# 13. TESTING AND QUALITY CONTROL
+
+Testing is mandatory.
+
+For every phase:
+
+1. Implement a small component.
+2. Run its unit tests.
+3. Fix failures.
+4. Run integration tests.
+5. Save a working checkpoint.
+6. Document what is complete.
+7. Proceed to the next phase.
+
+Required tests include:
+
+Dataset:
+- NPZ loading.
+- Correct dimensions.
+- Correct feature selection.
+- Adjacency validation.
+- Chronological split.
+- No data leakage.
+
+Model:
+- Graph convolution.
+- STGCN forward pass.
+- Backward pass.
+- Output dimensions.
+- Numerical stability.
+
+Federated:
+- Client initialization.
+- Local training.
+- FedAvg weighting.
+- Model redistribution.
+- IID/non-IID partitions.
+
+Communication:
+- Serialized upload bytes.
+- Download bytes.
+- Budget exhaustion.
+- Deferred communication.
+- Event trigger.
+- Maximum update interval.
+
+Security:
+- Invalid shapes.
+- NaN/Inf values.
+- Stale updates.
+- Duplicate updates.
+- Update clipping.
+
+Integration:
+- Complete training round.
+- Multiple communication rounds.
+- Global-model checkpoint.
+- Budget-constrained training.
+- Reproducibility.
+
+A successful program execution is not sufficient evidence of correctness.
+
+---
+
+# 14. AIORI DELIVERABLE PREPARATION
+
+Prepare the project to satisfy the official hackathon workflow.
+
+The previously communicated AIORI timeline is:
+
+- Level 1 Steps 1–7: October 14.
+- Level 2 announcement: October 16.
+- Mentoring and Steps 8–10: October 16–31.
+- Evaluator contact: October 31–November 4.
+- Regional stage: November 5 / November 24–30, according to the communicated schedule.
+- Finals: December 17 at IIT Jammu.
+
+Verify the current official portal for the applicable dates and instructions rather than assuming an old schedule is unchanged.
+
+Submission preparation must account for:
+
+1. Use the official template through the required "Use this template" workflow; do not simply fork if the instructions prohibit it.
+2. Maintain the team-code repository.
+3. Add the required aiori-hackathon topic.
+4. Transfer repository ownership as required.
+5. Upload the required PDF.
+6. Include the team YouTube introduction link.
+7. Include source code and supporting files.
+8. Prepare a live demo or required deliverables.
+9. Maintain a clean README and reproducible setup instructions.
+
+Prepare a checklist for each required submission step.
+
+Do not claim that a submission has been completed unless it has actually been performed.
+
+---
+
+# 15. FINAL DEMONSTRATION REQUIREMENTS
+
+The final prototype should demonstrate:
+
+1. Loading PEMS04.
+2. Displaying dataset dimensions and sensor information.
+3. Creating five virtual clients.
+4. Training the centralized STGCN baseline.
+5. Running standard FedAvg.
+6. Running proposed BEFA.
+7. Displaying the global model's prediction metrics.
+8. Showing communication bytes per round.
+9. Showing cumulative communication cost.
+10. Demonstrating budget enforcement.
+11. Showing event-triggered client participation.
+12. Comparing standard FedAvg with proposed BEFA.
+13. Showing IID and non-IID performance.
+14. Displaying the experimental results.
+
+A simple, clean dashboard or command-line demonstration is acceptable.
+
+Build the UI only after the core research implementation and tests are stable.
+
+---
+
+# 16. RULES THAT MUST NEVER BE VIOLATED
+
+1. Never fabricate dataset information.
+2. Never invent adjacency data.
+3. Never use random graph connections as if they were actual PEMS04 sensor relationships.
+4. Never claim that simulated clients are real deployed intersections.
+5. Never leak test data into training or threshold tuning.
+6. Never compare different model architectures as if the only difference were aggregation.
+7. Never report estimated communication cost as measured serialized bytes.
+8. Never claim that fewer rounds automatically means less communication.
+9. Never claim privacy or security guarantees that are not implemented.
+10. Never fabricate accuracy improvements.
+11. Never skip the centralized and FedAvg baselines.
+12. Never build the dashboard before the working ML pipeline.
+13. Never proceed past a failed critical test without resolving or documenting it.
+14. Keep code modular, reproducible and understandable.
+15. Maintain a project progress document.
+
+---
+
+# 17. FIRST EXECUTION TASK
+
+Do not generate the entire project at once.
+
+Start by performing PHASE 0 and PHASE 1.
+
+Your first response and execution must provide:
+
+1. Existing AIORI folder inspection.
+2. Exact dataset file path.
+3. NPZ loading verification.
+4. Actual array shape and feature statistics.
+5. Adjacency matrix availability check.
+6. Missing dependency report.
+7. Proposed project directory structure.
+8. A prioritized implementation roadmap.
+9. A list of risks and unresolved issues.
+10. A list of tests required before proceeding.
+
+Then stop and present the Phase 1 results.
+
+Do not begin full model training until dataset preparation and adjacency validation are complete.
+
+For every subsequent phase, explain:
+- What you are implementing.
+- Why it is necessary.
+- What the baseline requirement is.
+- What advancement is being added.
+- How it will be tested.
+- What constitutes successful completion.
+
+**FINAL RESEARCH OBJECTIVE**
+
+Develop a technically correct and experimentally validated federated traffic-flow prediction prototype that demonstrates whether intelligent, event-aware and budget-constrained aggregation can reduce total communication cost while maintaining or improving prediction accuracy compared with conventional FedAvg.
+
+Prioritize correct aggregation, communication accounting, measurable novelty and reliable experimental evidence over unnecessary complexity.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-30T10:41:28+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.8 Flash (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

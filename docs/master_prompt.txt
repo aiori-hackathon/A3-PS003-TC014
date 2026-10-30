@@ -1,0 +1,107 @@
+<USER_REQUEST>
+# MASTER PROJECT DEVELOPMENT PROMPT
+## AIORI HACKATHON 3 – PS-003
+
+### PROJECT TITLE
+**Secure, Budgeted, Event-Aware Federated Traffic Learning**
+
+### 1. YOUR ROLE AND DEVELOPMENT EXPECTATIONS
+
+Act as a senior Machine Learning Engineer, Federated Learning Researcher, Software Architect, and Technical Project Mentor.
+
+You are responsible for helping us develop a complete, research-oriented, testable prototype for AIORI Hackathon 3.
+
+Do not approach this as a simple coding task.
+
+You must:
+- Plan the entire project before implementation.
+- Divide the work into clear development phases.
+- Establish baseline requirements before introducing advanced features.
+- Explain the purpose of every major component.
+- Implement each component separately and test it.
+- Maintain a working project at every stage.
+- Prioritize mathematical correctness and experimental validity.
+- Maintain reproducibility and proper documentation.
+- Never fabricate experimental results.
+- Never claim that an unimplemented feature is complete.
+
+We have limited development time. Prioritize the most important technical contributions rather than unnecessary UI development or decorative features.
+
+Use Python and PyTorch unless there is a compelling technical reason to choose otherwise.
+
+Our workspace is already created:
+
+AIORI/
+
+The downloaded PEMS04 dataset is located inside this folder.
+
+First inspect the existing folder structure and files. Do not overwrite or delete existing data.
+
+---
+
+# 2. OFFICIAL AIORI PROBLEM STATEMENT
+
+Problem Statement PS-003:
+
+**Federated Traffic-Flow Prediction with Communication-Cost Evaluation**
+
+The project must demonstrate how traffic-flow prediction can be performed using federated learning while evaluating communication overhead.
+
+The implementation must include:
+
+1. One public traffic dataset.
+2. Dataset distribution across 3–5 simulated intersections or clients.
+3. A compact traffic-prediction model.
+4. Federated learning using FedAvg.
+5. A cent
+<truncated 30699 bytes>
+ML pipeline.
+13. Never proceed past a failed critical test without resolving or documenting it.
+14. Keep code modular, reproducible and understandable.
+15. Maintain a project progress document.
+
+---
+
+# 17. FIRST EXECUTION TASK
+
+Do not generate the entire project at once.
+
+Start by performing PHASE 0 and PHASE 1.
+
+Your first response and execution must provide:
+
+1. Existing AIORI folder inspection.
+2. Exact dataset file path.
+3. NPZ loading verification.
+4. Actual array shape and feature statistics.
+5. Adjacency matrix availability check.
+6. Missing dependency report.
+7. Proposed project directory structure.
+8. A prioritized implementation roadmap.
+9. A list of risks and unresolved issues.
+10. A list of tests required before proceeding.
+
+Then stop and present the Phase 1 results.
+
+Do not begin full model training until dataset preparation and adjacency validation are complete.
+
+For every subsequent phase, explain:
+- What you are implementing.
+- Why it is necessary.
+- What the baseline requirement is.
+- What advancement is being added.
+- How it will be tested.
+- What constitutes successful completion.
+
+**FINAL RESEARCH OBJECTIVE**
+
+Develop a technically correct and experimentally validated federated traffic-flow prediction prototype that demonstrates whether intelligent, event-aware and budget-constrained aggregation can reduce total communication cost while maintaining or improving prediction accuracy compared with conventional FedAvg.
+
+Prioritize correct aggregation, communication accounting, measurable novelty and reliable experimental evidence over unnecessary complexity.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-30T10:41:28+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.8 Flash (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

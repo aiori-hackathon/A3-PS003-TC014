@@ -1,0 +1,2 @@
+experiment,distribution,seed,num_rounds,total_bytes,total_bytes_mb,val_mae,val_rmse,test_mae_overall,test_rmse_overall,test_mape_overall,test_mae_5m,test_rmse_5m,test_mae_10m,test_rmse_10m,test_mae_15m,test_rmse_15m
+fedavg_non_iid_seed42,non_iid,42,3,6086850,5.804872512817383,45.78006362915039,66.14035034179688,43.08243942260742,62.46720504760742,35.50137710571289,42.49383544921875,62.04143524169922,43.641056060791016,63.87213134765625,43.112430572509766,61.462730407714844

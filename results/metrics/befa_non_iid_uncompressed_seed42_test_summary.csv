@@ -1,0 +1,2 @@
+experiment,distribution,compressed,seed,budget_mb,num_rounds,total_bytes,total_bytes_mb,deferred_transmissions,budget_exhausted,val_mae,val_rmse,test_mae_overall,test_rmse_overall,test_mape_overall,test_mae_5m,test_rmse_5m,test_mae_10m,test_rmse_10m,test_mae_15m,test_rmse_15m
+befa_non_iid_uncompressed_seed42,non_iid,False,42,4.5,3,4466506,4.259592056274414,4,False,31.29143524169922,49.161582946777344,30.137332916259766,47.47955322265625,15.354307174682617,27.37894630432129,42.91887283325195,29.570497512817383,46.062049865722656,33.462554931640625,52.907291412353516
